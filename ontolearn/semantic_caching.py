@@ -1,8 +1,31 @@
+# -----------------------------------------------------------------------------
+# MIT License
+#
+# Copyright (c) 2024 Ontolearn Team
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+#
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+# -----------------------------------------------------------------------------
+
 """python examples/retrieval_eval.py"""
 from ontolearn.owl_neural_reasoner import TripleStoreNeuralReasoner
 from ontolearn.knowledge_base import KnowledgeBase
-from ontolearn.triple_store import TripleStore
-from ontolearn.utils import jaccard_similarity, f1_set_similarity, concept_reducer, concept_reducer_properties
+from ontolearn.utils import jaccard_similarity, concept_reducer, concept_reducer_properties
 from owlapy.class_expression import (
     OWLObjectUnionOf,
     OWLObjectIntersectionOf,
@@ -14,15 +37,9 @@ from owlapy.class_expression import (
     OWLObjectComplementOf,
     OWLClass,
 )
-from owlapy.owl_property import (
-    OWLDataProperty,
-    OWLObjectInverseOf,
-    OWLObjectProperty,
-    OWLProperty,
-)
+from owlapy.owl_property import OWLObjectInverseOf
 import time
 from typing import Tuple, Set
-import pandas as pd
 from owlapy import owl_expression_to_dl
 from itertools import chain
 import os
@@ -30,12 +47,9 @@ import random
 import itertools
 from owlready2 import *
 from collections import OrderedDict
-from owlapy.owlapi_adaptor import OWLAPIAdaptor
-from owlapy.parser import DLSyntaxParser
+from owlapy.owl_reasoner import SyncReasoner
 import pickle
 from tqdm import tqdm
-
-
 
 
 def concept_generator(path_kg):
@@ -67,8 +81,9 @@ def concept_generator(path_kg):
     # (8) UNNC: NC UNION NC⁻.
     unnc = nc.union(nnc)
 
-    # (9) Retrieve 10 random Nominals.
-    nominals = set(random.sample(symbolic_kb.all_individuals_set(), 3))
+    # (9) Retrieve 3 random Nominals.
+    inds = list(symbolic_kb.individuals())
+    nominals = set(random.sample(inds, 3))
 
     # (10) All Combinations of 3 for Nominals.
     nominal_combinations = set(
@@ -125,48 +140,52 @@ def concept_generator(path_kg):
 
     # () Converted to list so that the progress bar works.
     random.seed(0)
-    if len(intersections_unnc)>200:
-        intersections_unnc = random.sample(intersections_unnc, k=200)
-    if len(unions_unnc)>200:
-        unions_unnc = random.sample(unions_unnc, k=200)
-    if len(exist_unnc)>100:
-        exist_unnc = set(list(exist_unnc)[:100]) #random.sample(exist_unnc, k=100)
-    if len(for_all_unnc)>100:
-        for_all_unnc = set(list(for_all_unnc)[:100]) #random.sample(for_all_unnc, k=100)
+    if len(intersections_unnc) > 500:
+        intersections_unnc = random.sample(intersections_unnc, k=500)
+    if len(unions_unnc) > 500:
+        unions_unnc = random.sample(unions_unnc, k=500)
+    if len(exist_unnc) > 200:
+        exist_unnc = set(list(exist_unnc)[:200])  
+    if len(for_all_unnc) > 200:
+        for_all_unnc = set(list(for_all_unnc)[:200])  
 
     concepts = list(
         chain(nc, nnc, unions_unnc, intersections_unnc, exist_unnc, for_all_unnc,
-            # nc, unions, intersections, nnc, unions_unnc, intersections_unnc,
-            # exist_unnc, for_all_unnc,
-            # min_cardinality_unnc_1, min_cardinality_unnc_2, min_cardinality_unnc_3,
-            # max_cardinality_unnc_1, max_cardinality_unnc_2, max_cardinality_unnc_3,
-            # exist_nominals,
         )
     )
     return concepts
 
 
 
-def get_shuffled_concepts(path_kg, data_name):
-    '''Shuffle the generated concept and save it in a folder for reproducibility'''
-     # Create the directory if it does not exist
+
+def get_saved_concepts(path_kg, data_name, shuffle):
+    """Shuffle or not the generated concept and save it in a folder for reproducibility."""
+    
+    # Create the directory if it does not exist
     cache_dir = f"caching_results_{data_name}"
     os.makedirs(cache_dir, exist_ok=True)
-    save_file = os.path.join(cache_dir, "shuffled_concepts.pkl")
+
+    # Determine the filename based on shuffle flag
+    filename = "shuffled_concepts.pkl" if shuffle else "unshuffled_concepts.pkl"
+    save_file = os.path.join(cache_dir, filename)
 
     if os.path.exists(save_file):
-        # Load the saved shuffled concepts
         with open(save_file, "rb") as f:
             alc_concepts = pickle.load(f)
-        print("Loaded shuffled concepts from file.")
+        print(f"Loaded concepts from {filename}.")
     else:
-        # Generate, shuffle, and save the concepts
+        # Generate concepts and optionally shuffle
         alc_concepts = concept_generator(path_kg)
-        random.seed(0)
-        random.shuffle(alc_concepts)
+        if shuffle:
+            random.seed(0)
+            random.shuffle(alc_concepts)
+
+        # Save the concepts
         with open(save_file, "wb") as f:
             pickle.dump(alc_concepts, f)
-        print("Generated, shuffled, and saved concepts.")   
+
+        print(f"Generated and saved {'shuffled' if shuffle else 'unshuffled'} concepts.")
+    
     return alc_concepts
 
 
@@ -206,7 +225,6 @@ class CacheWithEviction:
                 random_key = random.choice(list(self.cache.keys()))
                 del self.cache[random_key]
                 self.access_times.pop(random_key, None)
-            
 
     def get(self, key):
         """
@@ -485,7 +503,7 @@ def non_semantic_caching_size(func, cache_size):
         
         # Apply LRU strategy: remove the least recently used item if the cache exceeds its size
         if len(cache) > cache_size:
-            cache.popitem(last=False)  # Remove the first item (least recently used)
+            cache.popitem(last=False)  
 
         stats['time'] += (time.time() - start_time)
         return result
@@ -510,6 +528,7 @@ def non_semantic_caching_size(func, cache_size):
 
 
 def retrieve(expression:str, path_kg:str, path_kge_model:str) -> Tuple[Set[str], Set[str]]:
+    '''Retrieve instances with neural reasoner'''
     'take a concept c and returns it set of retrieved individual'
 
     if path_kge_model:
@@ -524,22 +543,19 @@ def retrieve(expression:str, path_kg:str, path_kge_model:str) -> Tuple[Set[str],
     return retrievals
 
 
-def retrieve_other_reasoner(expression, path_kg, name_reasoner='HermiT'): # reasoners = ['HermiT', 'Pellet', 'JFact', 'Openllet']
+def retrieve_other_reasoner(expression, path_kg, name_reasoner='HermiT'): 
+    '''Retrieve instances with symbolic reasoners'''
     
-    owlapi_adaptor = OWLAPIAdaptor(path=path_kg, name_reasoner=name_reasoner)
+    reasoner = SyncReasoner(path_kg, reasoner=name_reasoner)
    
-    if owlapi_adaptor.has_consistent_ontology():
-
-        owlapi_adaptor = OWLAPIAdaptor(path=path_kg, name_reasoner=name_reasoner)
-
-        return {i.str for i in (owlapi_adaptor.instances(expression, direct=False))}
-
+    if reasoner.has_consistent_ontology():
+        return {i.str for i in (reasoner.instances(expression, direct=False))}
     else:
         print("The knowledge base is not consistent") 
          
 
-
 def run_semantic_cache(path_kg:str, path_kge:str, cache_size:int, name_reasoner:str, eviction:str, random_seed:int, cache_type:str, shuffle_concepts:str):
+    '''Return cache performnace with semantics'''
 
     symbolic_kb = KnowledgeBase(path=path_kg)
     D = []
@@ -548,15 +564,13 @@ def run_semantic_cache(path_kg:str, path_kge:str, cache_size:int, name_reasoner:
     data_name = path_kg.split("/")[-1].split("/")[-1].split(".")[0]
 
     if shuffle_concepts:
-        alc_concepts = get_shuffled_concepts(path_kg, data_name=data_name) 
+        alc_concepts = get_saved_concepts(path_kg, data_name=data_name, shuffle=True) 
     else:
-        alc_concepts = concept_generator(path_kg)
+        alc_concepts = get_saved_concepts(path_kg, data_name=data_name, shuffle=False) 
 
     if name_reasoner == 'EBR':
-        # cached_retriever = subsumption_based_caching(retrieve, cache_size=cache_size)
         cached_retriever = semantic_caching_size(retrieve, cache_size=cache_size, eviction_strategy=eviction, random_seed=random_seed, cache_type=cache_type, concepts=alc_concepts)
     else:
-        # cached_retriever = subsumption_based_caching(retrieve, cache_size=cache_size)
         cached_retriever = semantic_caching_size(retrieve_other_reasoner, cache_size=cache_size, eviction_strategy=eviction, random_seed=random_seed, cache_type=cache_type, concepts=alc_concepts)
 
     total_time_ebr = 0
@@ -621,6 +635,7 @@ def run_semantic_cache(path_kg:str, path_kge:str, cache_size:int, name_reasoner:
 
 
 def run_non_semantic_cache(path_kg:str, path_kge:str, cache_size:int, name_reasoner:str, shuffle_concepts:str):
+    '''Return cache performnace without any semantics'''
 
     symbolic_kb = KnowledgeBase(path=path_kg)
     D = []
@@ -629,15 +644,13 @@ def run_non_semantic_cache(path_kg:str, path_kge:str, cache_size:int, name_reaso
     data_name = path_kg.split("/")[-1].split("/")[-1].split(".")[0]
 
     if shuffle_concepts:
-        alc_concepts = get_shuffled_concepts(path_kg, data_name=data_name) 
+        alc_concepts = get_saved_concepts(path_kg, data_name=data_name, shuffle=True) 
     else:
-        alc_concepts = concept_generator(path_kg)
+        alc_concepts = get_saved_concepts(path_kg, data_name=data_name, shuffle=False) 
 
     if name_reasoner == 'EBR':
-        # cached_retriever = subsumption_based_caching(retrieve, cache_size=cache_size)
         cached_retriever = non_semantic_caching_size(retrieve, cache_size=cache_size)
     else:
-        # cached_retriever = subsumption_based_caching(retrieve, cache_size=cache_size)
         cached_retriever = non_semantic_caching_size(retrieve_other_reasoner, cache_size=cache_size)
 
     total_time_ebr = 0

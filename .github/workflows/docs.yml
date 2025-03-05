@@ -4,8 +4,10 @@ on:
   push:
     branches:
      - master
-     - develop
+     - documentation # only for quick updates or testing purposes
   pull_request:
+    branches:
+      - master
 
 jobs:
   docs:

@@ -33,11 +33,12 @@ from owlapy.class_expression import OWLClassExpression
 from owlapy.iri import IRI
 from owlapy.owl_axiom import OWLAxiom
 from owlapy.owl_individual import OWLNamedIndividual
-from owlapy.owl_reasoner import OWLReasoner
+from owlapy.abstracts import AbstractOWLReasoner
 
 from ontolearn.abstracts import AbstractNode
 from ontolearn.base_concept_learner import BaseConceptLearner
-from ontolearn.concept_learner import CELOE, OCEL, EvoLearner, NCES
+from .learners import CELOE, OCEL
+from ontolearn.concept_learner import EvoLearner, NCES
 from ontolearn.ea_algorithms import EASimple
 from ontolearn.ea_initialization import EARandomWalkInitialization, EARandomInitialization, RandomInitMethod
 from ontolearn.fitness_functions import LinearPressureFitness
@@ -46,7 +47,7 @@ from ontolearn.knowledge_base import KnowledgeBase
 from ontolearn.learning_problem import PosNegLPStandard
 from ontolearn.refinement_operators import ModifiedCELOERefinement
 from ontolearn.metrics import Accuracy, F1, Recall, Precision, WeightedAccuracy
-from ontolearn.triple_store import TripleStoreKnowledgeBase
+from ontolearn.triple_store import TripleStore
 from ontolearn.value_splitter import BinningValueSplitter, EntropyValueSplitter
 
 logger = logging.getLogger(__name__)
@@ -125,7 +126,7 @@ _N = TypeVar('_N', bound=AbstractNode)  #:
 
 
 class Trainer:  # pragma: no cover
-    def __init__(self, learner: BaseConceptLearner, reasoner: OWLReasoner):
+    def __init__(self, learner: BaseConceptLearner, reasoner: AbstractOWLReasoner):
         """
         A class to disentangle the learner from its training.
 
@@ -199,7 +200,7 @@ def execute(args): # pragma: no cover
     learner_type = models[args.model]
     optargs = {}
     if args.sparql_endpoint:
-        kb = TripleStoreKnowledgeBase(args.sparql_endpoint)
+        kb = TripleStore(args.sparql_endpoint)
     else:
         kb = KnowledgeBase(path=args.knowledge_base_path)
 
@@ -241,7 +242,7 @@ def execute(args): # pragma: no cover
     model = learner_type(**_get_matching_opts(learner_type, optargs, args_d))
 
     if args.model in ["celoe", "evolearner", "ocel"]:
-        trainer = Trainer(model, kb.reasoner())
+        trainer = Trainer(model, kb.reasoner)
         trainer.fit(lp)
         print(trainer.best_hypotheses(1))
         if args.save:

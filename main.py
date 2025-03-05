@@ -105,14 +105,14 @@ def get_default_arguments(description=None):
                         help="Random initialization method.", choices=["GROW", "FULL", "RAMPED_HALF_HALF"])
 
     # NCES only
-    parser.add_argument("--learner_name", type=str, default="SetTransformer", help="Learner name.",
+    parser.add_argument("--learner_names", type=str, nargs="+", default=["SetTransformer"], help="Learner name.",
                         choices=["SetTransformer", "GRU", "LSTM"])
     parser.add_argument("--proj_dim", type=int, default=128, help="Number of projection dimensions.")
     parser.add_argument("--rnn_n_layers", type=int, default=2, help="Number of RNN layers (only for LSTM and GRU).")
     parser.add_argument("--drop_prob", type=float, default=0.1, help="Drop probability.")
     parser.add_argument("--num_heads", type=int, default=4, help="Number of heads")
     parser.add_argument("--num_seeds", type=int, default=1, help="Number of seeds (only for SetTransformer).")
-    parser.add_argument("--num_inds", type=int, default=32, help="Number of inducing points (only for SetTransformer).")
+    parser.add_argument("--m", type=int, default=32, help="Number of inducing points (only for SetTransformer).")
     parser.add_argument("--ln", type=bool, default=False, help="Layer normalization (only for SetTransformer).")
     parser.add_argument("--learning_rate", type=float, default=1e-4, help="Learning rate.")
     parser.add_argument("--decay_rate", type=int, default=0, help="Decay rate.")
@@ -122,8 +122,8 @@ def get_default_arguments(description=None):
     parser.add_argument("--max_length", type=int, default=48, help="Maximum length")
     parser.add_argument("--load_pretrained", type=bool, default=True, help="Load pretrained.")
     parser.add_argument("--sorted_examples", type=bool, default=True, help="Sorted examples.")
-    parser.add_argument("--pretrained_model_name", type=str, default="SetTransformer", help="Pretrained model name",
-                        choices=["SetTransformer", "GRU", "LSTM"])
+#    parser.add_argument("--pretrained_model_name", type=str, default="SetTransformer", help="Pretrained model name",
+#                        choices=["SetTransformer", "GRU", "LSTM"])
 
     if description is None:
         return parser.parse_args()

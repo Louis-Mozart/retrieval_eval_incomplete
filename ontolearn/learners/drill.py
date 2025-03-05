@@ -21,6 +21,7 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 # -----------------------------------------------------------------------------
+from abc import abstractmethod
 
 import pandas as pd
 import json
@@ -29,10 +30,10 @@ from owlapy.owl_individual import OWLNamedIndividual
 from owlapy import owl_expression_to_dl
 from ontolearn.base_concept_learner import RefinementBasedConceptLearner
 from ontolearn.refinement_operators import LengthBasedRefinement
-from ontolearn.abstracts import AbstractScorer, AbstractNode
+from ontolearn.abstracts import AbstractNode, AbstractKnowledgeBase
 from ontolearn.search import RL_State
 from typing import Set, List, Tuple, Optional, Generator, SupportsFloat, Iterable, FrozenSet, Callable, Union
-from ontolearn.learning_problem import PosNegLPStandard, EncodedPosNegLPStandard
+from ontolearn.learning_problem import PosNegLPStandard
 import torch
 from ontolearn.data_struct import Experience
 from ontolearn.search import DRILLSearchTreePriorityQueue
@@ -40,17 +41,17 @@ from ontolearn.utils import create_experiment_folder
 from collections import Counter, deque
 from itertools import chain
 import time
-import dicee
 import os
-from owlapy import owl_expression_to_dl
+from ontolearn.utils import read_csv
 # F1 class will be deprecated to become compute_f1_score function.
-from ontolearn.metrics import F1
-from ontolearn.utils.static_funcs import compute_f1_score
+from ontolearn.utils.static_funcs import compute_f1_score, compute_f1_score_from_confusion_matrix, concept_len
 import random
 from ontolearn.heuristics import CeloeBasedReward
-import torch
-from ontolearn.data_struct import PrepareBatchOfTraining, PrepareBatchOfPrediction
+from ontolearn.data_struct import PrepareBatchOfPrediction
 from tqdm import tqdm
+from owlapy.converter import owl_expression_to_sparql_with_confusion_matrix
+
+from ..triple_store import TripleStore
 from ..utils.static_funcs import make_iterable_verbose
 from owlapy.utils import get_expression_length
 
@@ -58,7 +59,7 @@ from owlapy.utils import get_expression_length
 class Drill(RefinementBasedConceptLearner):  # pragma: no cover
     """ Neuro-Symbolic Class Expression Learning (https://www.ijcai.org/proceedings/2023/0403.pdf)"""
 
-    def __init__(self, knowledge_base,
+    def __init__(self, knowledge_base: AbstractKnowledgeBase,
                  path_embeddings: str = None,
                  refinement_operator: LengthBasedRefinement = None,
                  use_inverse: bool = True,
@@ -166,7 +167,11 @@ class Drill(RefinementBasedConceptLearner):  # pragma: no cover
                                                max_num_of_concepts_tested=max_num_of_concepts_tested,
                                                max_runtime=max_runtime)
         # CD: This setting the valiable will be removed later.
-        self.quality_func = compute_f1_score
+
+        if isinstance(self.kb, TripleStore):
+            self.quality_func = compute_f1_score_from_confusion_matrix
+        else:
+            self.quality_func = compute_f1_score
 
     def initialize_training_class_expression_learning_problem(self,
                                                               pos: FrozenSet[OWLNamedIndividual],
@@ -305,9 +310,9 @@ class Drill(RefinementBasedConceptLearner):  # pragma: no cover
         if max_runtime:
             assert isinstance(max_runtime, float) or isinstance(max_runtime, int)
             self.max_runtime = max_runtime
-
+        # (1) Reinitialize few attributes to ensure a clean start.
         self.clean()
-        # (1) Initialize the start time
+        # (2) Initialize the start time
         self.start_time = time.time()
         # (2) Two mappings from a unique OWL Concept to integer, where a unique concept represents the type info
         # C(x) s.t. x \in E^+ and  C(y) s.t. y \in E^-.
@@ -334,7 +339,7 @@ class Drill(RefinementBasedConceptLearner):  # pragma: no cover
             x.heuristic = x.quality
             if x.quality > best_found_quality:
                 best_found_quality = x.quality
-            self.search_tree.add(x)
+                self.search_tree.add(x)
             if ith_bias == self.positive_type_bias:
                 break
 
@@ -433,9 +438,20 @@ class Drill(RefinementBasedConceptLearner):  # pragma: no cover
         # (3) Increment the number of tested concepts attribute.
 
         """
-        individuals = frozenset({i for i in self.kb.individuals(state.concept)})
+        if isinstance(self.kb,TripleStore):
+            sparql_query=owl_expression_to_sparql_with_confusion_matrix(expression=state.concept,
+                                                           positive_examples=self.pos,
+                                                           negative_examples=self.neg)
+            bindings=self.kb.query(sparql_query).json()["results"]["bindings"]
+            assert len(bindings) == 1
+            bindings=bindings.pop()
+            confusion_matrix={k : v["value"]for k,v in bindings.items()}
+            quality = self.quality_func(confusion_matrix=confusion_matrix)
 
-        quality = self.quality_func(individuals=individuals, pos=self.pos, neg=self.neg)
+
+        else:
+            individuals = frozenset([i for i in self.kb.individuals(state.concept)])
+            quality = self.quality_func(individuals=individuals, pos=self.pos, neg=self.neg)
         state.quality = quality
         self._number_of_tested_concepts += 1
 
@@ -591,49 +607,6 @@ class Drill(RefinementBasedConceptLearner):  # pragma: no cover
 
     def get_individuals(self, rl_state: RL_State) -> List[str]:
         return [owl_individual.str.strip() for owl_individual in self.kb.individuals(rl_state.concept)]
-
-    def get_embeddings(self, instances) -> None:
-        if self.representation_mode == 'averaging':
-            # (2) if input node has not seen before, assign embeddings.
-            if rl_state.embeddings is None:
-                assert isinstance(rl_state.concept, OWLClassExpression)
-                # (3) Retrieval instances via our retrieval function (R(C)). Be aware Open World and Closed World
-
-                rl_state.instances = set(self.kb.individuals(rl_state.concept))
-                # (4) Retrieval instances in terms of bitset.
-                rl_state.instances_bitset = self.kb.individuals_set(rl_state.concept)
-                # (5) |R(C)|=\emptyset ?
-                if len(rl_state.instances) == 0:
-                    # If|R(C)|=\emptyset, then represent C with zeros
-                    if self.pre_trained_kge is not None:
-                        emb = torch.zeros(1, self.sample_size, self.embedding_dim)
-                    else:
-                        emb = torch.rand(size=(1, self.sample_size, self.embedding_dim))
-                else:
-                    # If|R(C)| \not= \emptyset, then take the mean of individuals.
-                    str_individuals = [i.str for i in rl_state.instances]
-                    assert len(str_individuals) > 0
-                    if self.pre_trained_kge is not None:
-                        emb = self.pre_trained_kge.get_entity_embeddings(str_individuals)
-                        emb = torch.mean(emb, dim=0)
-                        emb = emb.view(1, self.sample_size, self.embedding_dim)
-                    else:
-                        emb = torch.rand(size=(1, self.sample_size, self.embedding_dim))
-                # (6) Assign embeddings
-                rl_state.embeddings = emb
-            else:
-                """ Embeddings already assigned."""
-                try:
-                    assert rl_state.embeddings.shape == (1, self.sample_size, self.embedding_dim)
-                except AssertionError as e:
-                    print(e)
-                    print(rl_state)
-                    print(rl_state.embeddings.shape)
-                    print((1, self.sample_size, self.instance_embeddings.shape[1]))
-                    raise
-        else:
-            """ No embeddings available assigned."""""
-            assert self.representation_mode is None
 
     def assign_embeddings(self, rl_state: RL_State) -> None:
         """
@@ -798,13 +771,13 @@ class Drill(RefinementBasedConceptLearner):  # pragma: no cover
         sequence_of_states = []
         while len(sequence_of_goal_path) > 0:
             self.assign_embeddings(current_state)
-            current_state.length = self.kb.concept_len(current_state.concept)
+            current_state.length = concept_len(current_state.concept)
             if current_state.quality is None:
                 self.compute_quality_of_class_expression(current_state)
 
             next_state = sequence_of_goal_path.pop(0)
             self.assign_embeddings(next_state)
-            next_state.length = self.kb.concept_len(next_state.concept)
+            next_state.length = concept_len(next_state.concept)
             if next_state.quality is None:
                 self.compute_quality_of_class_expression(next_state)
             sequence_of_states.append((current_state, next_state))
@@ -865,40 +838,6 @@ class Drill(RefinementBasedConceptLearner):  # pragma: no cover
         with open(f"{self.storage_path}/seen_examples.json", 'w', encoding='utf-8') as f:
             json.dump(self.seen_examples, f, ensure_ascii=False, indent=4)
         return self
-
-    # TODO: CD:Should be deprecated
-    def fit_from_iterable(self,
-                          dataset: List[Tuple[object, Set[OWLNamedIndividual], Set[OWLNamedIndividual]]],
-                          max_runtime: int = None) -> List:
-        """
-        Dataset is a list of tuples where the first item is either str or OWL class expression indicating target
-        concept.
-        """
-        if max_runtime:
-            self.max_runtime = max_runtime
-        renderer = DLSyntaxObjectRenderer()
-
-        results = []
-        for (target_ce, p, n) in dataset:
-            print(f'TARGET OWL CLASS EXPRESSION:\n{target_ce}')
-            print(f'|Sampled Positive|:{len(p)}\t|Sampled Negative|:{len(n)}')
-            start_time = time.time()
-            self.fit(pos=p, neg=n, max_runtime=max_runtime)
-            rn = time.time() - start_time
-            h: RL_State = next(iter(self.best_hypotheses()))
-            # TODO:CD: We need to remove this first returned boolean for the sake of readability.
-            _, f_measure = F1().score_elp(instances=h.instances_bitset, learning_problem=self._learning_problem)
-            _, accuracy = Accuracy().score_elp(instances=h.instances_bitset, learning_problem=self._learning_problem)
-
-            report = {'Target': str(target_ce),
-                      'Prediction': renderer.render(h.concept),
-                      'F-measure': f_measure,
-                      'Accuracy': accuracy,
-                      'NumClassTested': self._number_of_tested_concepts,
-                      'Runtime': rn}
-            results.append(report)
-
-        return results
 
 
 class DrillHeuristic:  # pragma: no cover
@@ -982,3 +921,89 @@ class DrillNet(torch.nn.Module):  # pragma: no cover
         # N x 1
         scores = self.fc2(X).flatten()
         return scores
+
+
+class DepthAbstractDrill:   # pragma: no cover
+    """
+    Abstract class for Convolutional DQL concept learning.
+    """
+
+    def __init__(self, path_of_embeddings, reward_func, learning_rate=None,
+                 num_episode=None, num_episodes_per_replay=None, epsilon=None,
+                 num_of_sequential_actions=None, max_len_replay_memory=None,
+                 representation_mode=None, batch_size=None, epsilon_decay=None, epsilon_min=None,
+                 num_epochs_per_replay=None, num_workers=None, verbose=0):
+        self.name = 'DRILL'
+        self.instance_embeddings = read_csv(path_of_embeddings)
+        if not self.instance_embeddings:
+            print("No embeddings found")
+            self.embedding_dim = None
+        else:
+            self.embedding_dim = self.instance_embeddings.shape[1]
+        self.reward_func = reward_func
+        self.representation_mode = representation_mode
+        assert representation_mode in ['averaging', 'sampling']
+        # Will be filled by child class
+        self.heuristic_func = None
+        self.num_workers = num_workers
+        # constants
+        self.epsilon = epsilon
+        self.learning_rate = learning_rate
+        self.num_episode = num_episode
+        self.num_of_sequential_actions = num_of_sequential_actions
+        self.num_epochs_per_replay = num_epochs_per_replay
+        self.max_len_replay_memory = max_len_replay_memory
+        self.epsilon_decay = epsilon_decay
+        self.epsilon_min = epsilon_min
+        self.batch_size = batch_size
+        self.verbose = verbose
+        self.num_episodes_per_replay = num_episodes_per_replay
+
+        # will be filled
+        self.optimizer = None  # torch.optim.Adam(self.model_net.parameters(), lr=self.learning_rate)
+
+        self.seen_examples = dict()
+        self.emb_pos, self.emb_neg = None, None
+        self.start_time = None
+        self.goal_found = False
+        self.experiences = Experience(maxlen=self.max_len_replay_memory)
+
+    def attributes_sanity_checking_rl(self):
+        assert len(self.instance_embeddings) > 0
+        assert self.embedding_dim > 0
+        if self.num_workers is None:
+            self.num_workers = 4
+        if self.epsilon is None:
+            self.epsilon = 1
+        if self.learning_rate is None:
+            self.learning_rate = .001
+        if self.num_episode is None:
+            self.num_episode = 1
+        if self.num_of_sequential_actions is None:
+            self.num_of_sequential_actions = 3
+        if self.num_epochs_per_replay is None:
+            self.num_epochs_per_replay = 1
+        if self.max_len_replay_memory is None:
+            self.max_len_replay_memory = 256
+        if self.epsilon_decay is None:
+            self.epsilon_decay = 0.01
+        if self.epsilon_min is None:
+            self.epsilon_min = 0
+        if self.batch_size is None:
+            self.batch_size = 1024
+        if self.verbose is None:
+            self.verbose = 0
+        if self.num_episodes_per_replay is None:
+            self.num_episodes_per_replay = 2
+
+    @abstractmethod
+    def init_training(self, *args, **kwargs):
+        """
+        Initialize training for a given E+,E- and K.
+        """
+
+    @abstractmethod
+    def terminate_training(self):
+        """
+        Save weights and training data after training phase.
+        """
