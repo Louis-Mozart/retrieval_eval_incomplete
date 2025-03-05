@@ -1,4 +1,3 @@
-
 """ Run the ontolearn/semantic.caching.py with arguments.
     Output will be csv files showing the performnce of the reasoner with and without cache on the chosen dataset(s).
     The files are saved in the same directory for further analysis.
@@ -54,4 +53,5 @@ for path_kg in args.path_kg:
     # Save to CSV
     df.to_csv(f'caching_results_{data_name}/cache_experiments_{args.name_reasoner}_{data_name}_{args.cache_type}.csv', index=False)
     all_detailed_results.to_csv(f'caching_results_{data_name}/detailled_experiments_{args.name_reasoner}_{data_name}_{args.cache_type}.csv', index=False)
+
 
