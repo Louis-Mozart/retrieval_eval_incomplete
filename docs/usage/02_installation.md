@@ -1,12 +1,12 @@
 # Installation
 
-Since Ontolearn is a Python library, you will need to have Python on
-your system. Python comes in various versions and with different,
-sometimes conflicting dependencies. Hence, most guides will recommend
-to set up a "virtual environment" to work in.
+Since Ontolearn is a Python library, you will need to have Python installed on
+your system (currently supporting version 3.10.13 or higher). Since python comes in various 
+versions and with different, sometimes conflicting dependencies, most guides will 
+recommend to set up a "virtual environment" to work in and so do we.
 
-One such system for virtual python environments is 
-[conda](https://conda.io/projects/conda/en/latest/index.html).
+To create a virtual python environments you can consider using the builtin python module
+[venv](https://docs.python.org/3/library/venv.html) or [conda](https://conda.io/projects/conda/en/latest/index.html). 
 
 ## Installation via _pip_
 
@@ -71,10 +71,8 @@ to successfully pass all the tests:
 ```shell
 pytest
 ```
-Note: Since Unix and Windows reference files differently, the test are set to work on Linux 
-but in Widows the filepaths throughout test cases should be changed which is something that
-is not very convenient to do. If you really want to run the tests in Windows, you can
-make use of the replace all functionality to change them.
+Note: The tests are designed to run successfully on Linux machines since we also use them in 
+GitHub Action. Therefore, trying to run them on a Windows machine can lead to some issues.
 
 ## Download External Files
 
@@ -118,29 +116,23 @@ Follow the same steps to unzip as the in the KGs case.
 
 --------------------------------------------------------
 
-### NCES data: 
+### Other Data
+Below you will find the links to get the necesseray data for _NCES_, _NCES2_, _ROCES_ and _CLIP_.
+The process to extract the data is the same as shown earlier with "KGs".
 
-```shell
-wget https://files.dice-research.org/projects/NCES/NCES_Ontolearn_Data/NCESData.zip -O ./NCESData.zip
-unzip NCESData.zip
-rm NCESData.zip
 ```
 
-If you are getting any error check if the following flags can help:
+#NCES:
+https://files.dice-research.org/projects/NCES/NCES_Ontolearn_Data/NCESData.zip
 
-```shell
-unzip -o NCESData.zip
-rm -f NCESData.zip
-```
+#NCES2:
+https://files.dice-research.org/projects/NCES/NCES_Ontolearn_Data/NCES2Data.zip
 
--------------------------------------------------------
+#ROCES:
+https://files.dice-research.org/projects/NCES/NCES_Ontolearn_Data/ROCESData.zip
 
-### CLIP data:
-
-```shell
-wget https://files.dice-research.org/projects/Ontolearn/CLIP/CLIPData.zip
-unzip CLIPData.zip
-rm CLIPData.zip 
+#CLIP:
+https://files.dice-research.org/projects/Ontolearn/CLIP/CLIPData.zip
 ```
 
 ## Building (sdist and bdist_wheel)
