@@ -38,8 +38,10 @@ from owlapy.class_expression import (
     OWLClass,
 )
 from owlapy.owl_property import OWLObjectInverseOf
+from owlapy.iri import IRI
 import time
-from typing import Tuple, Set
+from functools import lru_cache
+from typing import Set, Dict, Any, Tuple
 from owlapy import owl_expression_to_dl
 from itertools import chain
 import os
@@ -249,7 +251,7 @@ class CacheWithEviction:
         if self.strategy in ['LRU', 'MRU']:
             self.access_times[key] = time.time()  # Record access timestamp
 
-    def initialize_cache(self, func, path_onto, third, All_individuals, handle_restriction_func, concepts):
+    def initialize_cache(self, func, path_onto, third, All_individuals, handle_restriction_func:None, concepts):
         """
         Initialize the cache with precomputed results for OWLClass and Existential concepts.
         :param ontology: The loaded ontology.
@@ -279,9 +281,10 @@ class CacheWithEviction:
             self.put(negated_cls_str, neg)
             
         # Process Existential concepts
-        for existential in tqdm(existential_concepts, desc=f"Adding Existential concepts"):
-            existential_str = owl_expression_to_dl(existential)
-            self.put(existential_str, handle_restriction_func(existential))
+        if handle_restriction_func:
+            for existential in tqdm(existential_concepts, desc=f"Adding Existential concepts"):
+                existential_str = owl_expression_to_dl(existential)
+                self.put(existential_str, handle_restriction_func(existential))
             
         self.initialized = True
 
@@ -527,6 +530,172 @@ def non_semantic_caching_size(func, cache_size):
 
 
 
+
+def subsumption_caching_size(func, cache_size: int, eviction_strategy: str, random_seed: int, cache_type: str, concepts):
+    """
+    Implements the subsumption-based caching algorithm for retrieving instances of a concept.
+    """
+    cache = CacheWithEviction(cache_size, strategy=eviction_strategy, random_seed=random_seed)
+    loaded_ontologies: Dict[str, Any] = {}
+    loaded_individuals: Dict[str, Set[str]] = {}
+    precomputed_instances: Dict[str, Dict[str, Set[str]]] = {}  # Stores precomputed instances
+    stats = {'hits': 0, 'misses': 0, 'time': 0}
+    time_initialization = 0
+    loaded_reasoners: Dict[str, SyncReasoner] = {}
+
+    def precompute_class_instances(path_onto: str, onto) -> Dict[str, Set[str]]:
+        """
+        Precomputes all instances for each concept in the ontology using the reasoner.
+        Stores results in a dictionary for fast lookup.
+        """
+        reasoner = SyncReasoner(path_onto, reasoner="Pellet")
+        if not reasoner.has_consistent_ontology():
+            print("The knowledge base is not consistent")
+            return {}
+
+        return {C.iri.split('#')[-1]: {i.str for i in reasoner.instances(iri_to_owl_class(C.iri), direct=False)} for C in onto.classes()}
+    
+    def iri_to_owl_class(iri: str):
+        """
+        Converts an IRI string to an OWLClass representation.
+
+        :param iri: Full IRI string of the class (e.g., 'http://example.com/father#person')
+        :return: OWLClass(IRI(namespace, class_name))
+        """
+        
+        if '#' in iri:
+            namespace, class_name = iri.rsplit('#', 1)
+        elif '/' in iri:
+            namespace, class_name = iri.rsplit('/', 1)
+        else:
+            raise ValueError("Invalid IRI format")
+        
+        return OWLClass(IRI(namespace + "#", class_name))
+    
+
+    
+    def get_reasoner(path_onto: str) -> SyncReasoner:
+        """
+        Retrieves the reasoner for a given ontology path.
+        Initializes it only once per ontology.
+        """
+        if path_onto not in loaded_reasoners:
+            loaded_reasoners[path_onto] = SyncReasoner(path_onto, reasoner="Pellet")
+
+            if not loaded_reasoners[path_onto].has_consistent_ontology():
+                print(f"Warning: The ontology {path_onto} is inconsistent.")
+                loaded_reasoners[path_onto] = None  # Avoid using an inconsistent reasoner
+        
+        return loaded_reasoners[path_onto]
+
+    def instance_of(path_onto: str, a: str, C: str) -> bool:
+        """
+        Checks whether an individual `a` is an instance of `C`.
+
+        - Uses precomputed instances for **named** classes.
+        - Falls back to **reasoner check** for arbitrary expressions.
+        - Reuses a **single reasoner instance** per ontology.
+        """
+        named_class_instances = precomputed_instances.get(path_onto, {}).get(C, set())
+        if named_class_instances:
+            return a in named_class_instances
+
+        reasoner = get_reasoner(path_onto)
+        if reasoner is None:
+            return False  # Skip reasoning if ontology is inconsistent
+
+        return a in {i.str for i in reasoner.instances(C, direct=False)}
+
+
+    def precompute_subsumption_hierarchy(path_onto: str, concepts: Set[str]) -> Dict[str, Set[str]]:
+        """
+        Precomputes the subsumption hierarchy for all concepts.
+        """
+        hierarchy = {}
+        for concept in concepts:
+            super_concepts = set()
+            for other_concept in concepts:
+                if concept != other_concept and (cache.get(concept)).issuperset(cache.get(other_concept)):  
+                    super_concepts.add(other_concept)
+            hierarchy[concept] = super_concepts
+        return hierarchy
+    
+
+    
+
+    def wrapper(*args):
+        nonlocal stats, time_initialization
+
+        path_onto = args[1]
+        if path_onto not in loaded_ontologies:
+            loaded_ontologies[path_onto] = get_ontology(path_onto).load()
+            loaded_individuals[path_onto] = {a.iri for a in list(loaded_ontologies[path_onto].individuals())}
+ 
+        onto = loaded_ontologies[path_onto]
+        All_individuals = loaded_individuals[path_onto]
+        precomputed_instances[path_onto] = precompute_class_instances(path_onto, onto)  # Precompute instances
+        
+
+        str_expression = owl_expression_to_dl(args[0])
+        owl_expression = args[0]
+
+        # Try to retrieve the result from the cache
+        start_time = time.time()
+        cached_result = cache.get(str_expression)
+        if cached_result is not None:
+            stats['hits'] += 1
+            stats['time'] += (time.time() - start_time)
+            return cached_result
+
+        stats['misses'] += 1
+
+        # Cold cache initialization (lazy)
+        if cache_type == 'cold' and not cache.initialized:
+            start_time_initialization = time.time()
+            cache.initialize_cache(func, path_onto, args[-1], All_individuals, None, concepts)
+            time_initialization = time.time() - start_time_initialization
+
+        # Precompute subsumption hierarchy (if not already done)
+        if not hasattr(cache, 'subsumption_hierarchy'):
+            cache.subsumption_hierarchy = precompute_subsumption_hierarchy(path_onto, cache.get_all_items())
+
+        # Find super-concepts using precomputed hierarchy
+        super_concepts = cache.subsumption_hierarchy.get(owl_expression, set())
+
+        if not super_concepts:
+            instances = All_individuals
+        else:
+            instances = set.intersection(*(cache.get(D) for D in super_concepts))
+
+        instance_set = {a for a in instances if instance_of(path_onto, a, owl_expression)}
+
+        cache.put(str_expression, instance_set)
+        stats['time'] += (time.time() - start_time)
+
+        return instance_set
+
+    def get_stats():
+        total_requests = stats['hits'] + stats['misses']
+        hit_ratio = stats['hits'] / total_requests if total_requests > 0 else 0
+        miss_ratio = stats['misses'] / total_requests if total_requests > 0 else 0
+        avg_time = stats['time'] / total_requests if total_requests > 0 else 0
+
+        return {
+            'hit_ratio': hit_ratio,
+            'miss_ratio': miss_ratio,
+            'average_time_per_request': avg_time,
+            'total_time': stats['time'],
+            'time_initialization': time_initialization
+        }
+
+    wrapper.get_stats = get_stats
+    return wrapper
+
+
+
+
+
+
 def retrieve(expression:str, path_kg:str, path_kge_model:str) -> Tuple[Set[str], Set[str]]:
     '''Retrieve instances with neural reasoner'''
     'take a concept c and returns it set of retrieved individual'
@@ -553,6 +722,7 @@ def retrieve_other_reasoner(expression, path_kg, name_reasoner='HermiT'):
     else:
         print("The knowledge base is not consistent") 
          
+
 
 def run_semantic_cache(path_kg:str, path_kge:str, cache_size:int, name_reasoner:str, eviction:str, random_seed:int, cache_type:str, shuffle_concepts:str):
     '''Return cache performnace with semantics'''
@@ -709,5 +879,83 @@ def run_non_semantic_cache(path_kg:str, path_kge:str, cache_size:int, name_reaso
         '#concepts': len(alc_concepts),
         'avg_jaccard': f"{sum(Avg_jaccard) / len(Avg_jaccard):.3f}",
         'avg_jaccard_reas':  f"{sum(Avg_jaccard_reas) / len(Avg_jaccard_reas):.3f}"
+    }, D
+
+def run_subsumption_cache(path_kg:str, path_kge:str, cache_size:int, name_reasoner:str, eviction:str, random_seed:int, cache_type:str, shuffle_concepts:str):
+    '''Return cache performnace with semantics'''
+
+    symbolic_kb = KnowledgeBase(path=path_kg)
+    D = []
+    Avg_jaccard = []
+    Avg_jaccard_reas = []
+    data_name = path_kg.split("/")[-1].split("/")[-1].split(".")[0]
+
+    if shuffle_concepts:
+        alc_concepts = get_saved_concepts(path_kg, data_name=data_name, shuffle=True) 
+    else:
+        alc_concepts = get_saved_concepts(path_kg, data_name=data_name, shuffle=False) 
+
+    if name_reasoner == 'EBR':
+        cached_retriever = subsumption_caching_size(retrieve, cache_size=cache_size, eviction_strategy=eviction, random_seed=random_seed, cache_type=cache_type, concepts=alc_concepts)
+    else:
+        cached_retriever = subsumption_caching_size(retrieve_other_reasoner, cache_size=cache_size, eviction_strategy=eviction, random_seed=random_seed, cache_type=cache_type, concepts=alc_concepts)
+
+    total_time_ebr = 0
+
+    for expr in alc_concepts: 
+        if name_reasoner == 'EBR':
+            time_start_cache = time.time()
+            A  = cached_retriever(expr, path_kg, path_kge) #Retrieval with cache
+            time_cache = time.time()-time_start_cache
+
+            time_start = time.time()
+            retrieve_ebr = retrieve(expr, path_kg, path_kge) #Retrieval without cache
+            time_ebr = time.time()-time_start
+            total_time_ebr += time_ebr
+
+        else:
+            time_start_cache = time.time()
+            A  = cached_retriever(expr, path_kg, name_reasoner)  #Retrieval with cache
+            time_cache = time.time()-time_start_cache
+
+            time_start = time.time()
+            retrieve_ebr = retrieve_other_reasoner(expr, path_kg, name_reasoner=name_reasoner) #Retrieval without cache
+            time_ebr = time.time()-time_start
+            total_time_ebr += time_ebr
+
+        ground_truth = concept_retrieval(symbolic_kb, expr)
+
+        jacc = jaccard_similarity(A, ground_truth)
+        jacc_reas = jaccard_similarity(retrieve_ebr, ground_truth)
+        Avg_jaccard.append(jacc)
+        Avg_jaccard_reas.append(jacc_reas)
+        D.append({'dataset':data_name,'Expression':owl_expression_to_dl(expr), "Type": type(expr).__name__ ,'cache_size':cache_size, "time_ebr":time_ebr, "time_cache": time_cache, "Jaccard":jacc})
+        print(f'Expression: {owl_expression_to_dl(expr)}')
+        print(f'Jaccard similarity: {jacc}')
+        # assert jacc == 1.0 
+
+    stats = cached_retriever.get_stats()
+    
+    print('-'*50)
+    print("Cache Statistics:")
+    print(f"Hit Ratio: {stats['hit_ratio']:.2f}")
+    print(f"Miss Ratio: {stats['miss_ratio']:.2f}")
+    print(f"Average Time per Request: {stats['average_time_per_request']:.4f} seconds")
+    print(f"Total Time with Caching: {stats['total_time']:.4f} seconds")
+    print(f"Total Time Without Caching: {total_time_ebr:.4f} seconds")
+    print(f"Total number of concepts: {len(alc_concepts)}")
+    print(f"Average Jaccard for the {data_name} dataset", sum(Avg_jaccard)/len(Avg_jaccard))
+
+    return {
+        'dataset': data_name,
+        'cache_size': cache_size,
+        'hit_ratio': f"{stats['hit_ratio']:.2f}",
+        'miss_ratio': f"{stats['miss_ratio']:.2f}",
+        'RT_cache': f"{stats['total_time']:.3f}",
+        'RT': f"{total_time_ebr:.3f}",
+        '#concepts': len(alc_concepts),
+        'avg_jaccard': f"{sum(Avg_jaccard) / len(Avg_jaccard):.3f}",
+        'avg_jaccard_reas':  f"{sum(Avg_jaccard_reas) / len(Avg_jaccard_reas):.3f}",
+        'strategy': eviction
     }, D
 
