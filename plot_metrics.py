@@ -34,7 +34,6 @@ def plot_RT_vs_RT_cache(data, name_reasoner):
         # Filter data for the specific dataset
         subset = data[data["dataset"] == dataset_name]
         
-        # Define x and y values for the plot
         x = subset["cache_size"]
         y1 = subset["RT_cache"]  # Runtime with cache
         y2 = subset["RT"]        # Runtime without cache
