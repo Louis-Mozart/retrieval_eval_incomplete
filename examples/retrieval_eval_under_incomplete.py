@@ -2,9 +2,9 @@
    Given an input KB, we first generate several subgraphs that are either incomplete 
    or inconsistent. Each subgraph is then evaluated by running a retrieval task, 
    using a neural method or different symbolic reasoners (HermiT, Pellet, JFact, and Openllet).
-   For each subgraph, the script computes and records Jaccard similarity scores between 
+   For each subgraph, the script computes and records the Jaccard similarity scores between 
    the retrieval results of each reasoner and the expected goal, as well as their runtime. 
-   The result is then save as a csv file for further investigation.
+   The result is then saved as a CSV file for further investigation.
    
    To run the script: python examples/retrieval_eval_under_incomplete.py"""
 
