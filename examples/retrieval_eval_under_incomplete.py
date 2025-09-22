@@ -5,7 +5,6 @@
    For each subgraph, the script computes and records the Jaccard similarity scores between 
    the retrieval results of each reasoner and the expected goal, as well as their runtime. 
    The result is then saved as a CSV file for further investigation.
-   
    To run the script: python examples/retrieval_eval_under_incomplete.py"""
 
 
@@ -40,7 +39,6 @@ def generate_subgraphs(kb_path: str, directory: str, n: int, ratio: float, opera
 
     Inputs:
     ---------------
-
         kb_path (str): The path to the input KB file.
         directory (str): The directory where the generated subgraphs will be stored.
         n (int): The number of subgraphs to generate.
@@ -50,7 +48,6 @@ def generate_subgraphs(kb_path: str, directory: str, n: int, ratio: float, opera
 
     Output:
     ---------------
-
         Set[str]: A set containing the file paths of all the generated subgraphs.
     """
 
