@@ -44,15 +44,12 @@ def plot_RT_vs_RT_cache(data, name_reasoner):
         # Plot the data
         plt.plot(x, y1, '-b', label='Runtime with Cache')
         plt.plot(x, y2, '-r', label='Runtime without Cache')
-        
-        # Add legend
         plt.legend()
         
         # Label the axes and title
         plt.xlabel('Cache Size')
         plt.ylabel('Runtime(s)')
         plt.grid()
-        # plt.title(f'Cache Size vs. Runtime for {dataset_name}')
         plt.savefig(f'caching_results/runtime_plot_{name_reasoner}.pdf', format='pdf')
 
         # Show the plot
