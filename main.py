@@ -122,8 +122,8 @@ def get_default_arguments(description=None):
     parser.add_argument("--max_length", type=int, default=48, help="Maximum length")
     parser.add_argument("--load_pretrained", type=bool, default=True, help="Load pretrained.")
     parser.add_argument("--sorted_examples", type=bool, default=True, help="Sorted examples.")
-#    parser.add_argument("--pretrained_model_name", type=str, default="SetTransformer", help="Pretrained model name",
-#                        choices=["SetTransformer", "GRU", "LSTM"])
+   parser.add_argument("--pretrained_model_name", type=str, default="SetTransformer", help="Pretrained model name",
+                       choices=["SetTransformer", "GRU", "LSTM"])
 
     if description is None:
         return parser.parse_args()
