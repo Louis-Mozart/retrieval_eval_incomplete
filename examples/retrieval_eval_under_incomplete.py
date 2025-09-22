@@ -1,5 +1,5 @@
-"""The goal of this script is to perform retrieval task on inconsistent or incomplete KB. 
-   Given and input KB, we first generate a number of subgraphs that are either incomplete 
+"""The goal of this script is to perform a retrieval task on an inconsistent or incomplete KB. 
+   Given an input KB, we first generate a number of subgraphs that are either incomplete 
    or inconsistent. Each subgraph is then evaluated by running a retrieval task, using
    using a neural method or different symbolic reasoners (HermiT, Pellet, JFact, and Openllet).
    for each subgraph, the script computes and records Jaccard similarity scores between 
