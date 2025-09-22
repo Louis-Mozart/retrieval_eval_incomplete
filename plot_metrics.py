@@ -9,7 +9,6 @@ def plot_jaccard_vs_cache_size(data, name_reasoner):
 
     # Plot each dataset's Cache Size vs Avg Jaccard
     for dataset_name in datasets:
-        # Filter data for the specific dataset
         subset = data[data["dataset"] == dataset_name]
         
         # Plot cache size vs avg jaccard for this dataset
