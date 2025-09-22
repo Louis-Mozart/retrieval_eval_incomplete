@@ -69,7 +69,7 @@ def generate_subgraphs(kb_path: str, directory: str, n: int, ratio: float, opera
             # output path for the incomplete KGs
             output_path = f'{directory}/{operation}_{name}_ratio_{rate}_number_{i}.owl'
 
-                # Check if the file already exists
+                # Check if the file already exists,
             if not os.path.exists(output_path):
                 # If file does not exist, generate it
                 make_kb_incomplete(kb_path, output_path, rate, seed=i)
@@ -77,7 +77,7 @@ def generate_subgraphs(kb_path: str, directory: str, n: int, ratio: float, opera
         else:
             output_path = f'{directory}/{operation}_{name}_ratio_{rate}_number_{i}.owl'
 
-                # Check if the file already exists
+                # Check if the file already exists,
             if not os.path.exists(output_path):
                 # If file does not exist, generate it
                 make_kb_inconsistent(kb_path, output_path, rate, seed=i)
