@@ -32,7 +32,7 @@ def get_default_arguments(description=None):
     parser.add_argument("--model", type=str, default="celoe", choices=["celoe", "ocel", "evolearner", "nces"],
                         help="Available concept learning models.")
 
-    # Knowledge graph related arguments
+    # Knowledge graph-related arguments
     parser.add_argument("--knowledge_base_path", type=str, default="KGs/Family/family-benchmark_rich_background.owl",
                         help="Path to the knowledge base/ontology. This file contains '.owl' extension,"
                              "e.g. 'some/path/kb.owl'")
@@ -40,20 +40,20 @@ def get_default_arguments(description=None):
                         help="An endpoint of a triple store, e.g. 'http://localhost:3030/family/sparql'. ")
     parser.add_argument("--path_of_embeddings", type=str,
                         default='NCESData/family/embeddings/ConEx_entity_embeddings.csv',
-                        help="Path to knowledge base embeddings. Some models like NCES require this,"
+                        help="Path to knowledge base embeddings. Some models like NCES require this."
                              "e.g. 'some/path/kb_embeddings.csv'")
     parser.add_argument("--save", action="store_true", help="save the hypothesis?")
     # Common model arguments
     parser.add_argument("--path_learning_problem", type=str, default='examples/uncle_lp2.json',
                         help="Path to a .json file that contains 2 properties 'positive_examples' and "
-                             "'negative_examples'. Each of this properties should contain the IRIs of the respective"
+                             "'negative_examples'. Each of these properties should contain the IRIs of the respective"
                              "instances. e.g. 'some/path/lp.json'")
     parser.add_argument("--quality_metric", type=str, default='f1',
                         choices=["f1", "accuracy", "recall", "precision", "weighted_accuracy"],
                         help="Quality metric.")
     parser.add_argument("--max_runtime", type=int, default=5, help="Maximum runtime.")
 
-    # CELOE, OCEL and Evolearner only
+    # CELOE, OCEL, and Evolearner only
 
     parser.add_argument('--terminate_on_goal', type=bool, default=True, help="Terminate when finding concept of quality"
                                                                              "1.0?")
