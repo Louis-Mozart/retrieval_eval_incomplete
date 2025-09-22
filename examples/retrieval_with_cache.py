@@ -1,7 +1,7 @@
 """ Run the ontolearn/semantic.caching.py with arguments.
     Output will be CSV files showing the performance of the reasoner with and without cache on the chosen dataset(s).
     The files are saved in the same directory for further analysis.
-    e.g. If run like this, we will see the performance of EBR withou the semantic cache on the family datasets with
+    e.g., If run like this, we will see the performance of EBR without the semantic cache on the family datasets with
     all eviction strategies and cache sizes k * num_concepts where k \in [.2, .4, .8, 1.]"""
 
 import argparse 
@@ -13,10 +13,10 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--cache_size_ratios', type=list, default=[.1, .2, .4, .8, 1.], help="cache size is proportional to num_concepts, cache size = k * num_concepts")
 parser.add_argument('--path_kg', type=str, default=["KGs/Family/family.owl"])
 parser.add_argument('--path_kge', type=list, default=None)
-parser.add_argument('--name_reasoner', type=str, default='EBR', choices=["EBR",'HermiT', 'Pellet', 'JFact', 'Openllet'])
+parser.add_argument('--name_reasoner', type=str, default='EBR', choices=["EBR", 'HermiT', 'Pellet', 'JFact', 'Openllet'])
 parser.add_argument('--eviction_strategy', type=str, default='LRU', choices=['LIFO', 'FIFO', 'LRU', 'MRU', 'RP'])
-parser.add_argument('--random_seed_for_RP', type=int, default=10, help="Random seed if the eviction startegy is RP")
-parser.add_argument('--cache_type', type=str, default='cold', choices=['hot', 'cold'], help="Type of cache to be used. With cold cache we initialize the cache with NC, NNC and existantial concepts")
+parser.add_argument('--random_seed_for_RP', type=int, default=10, help="Random seed if the eviction strategy is RP")
+parser.add_argument('--cache_type', type=str, default='cold', choices=['hot', 'cold'], help="Type of cache to be used. With cold cache, we initialize the cache with NC, NNC, and existential concepts")
 parser.add_argument('--shuffle_concepts', action='store_true',help="If set, we shuffle the concepts for randomness")
 args = parser.parse_args()
 
