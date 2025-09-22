@@ -1,5 +1,5 @@
 """ Run the ontolearn/semantic.caching.py with arguments.
-    Output will be csv files showing the performnce of the reasoner with and without cache on the chosen dataset(s).
+    Output will be CSV files showing the performance of the reasoner with and without cache on the chosen dataset(s).
     The files are saved in the same directory for further analysis.
     e.g. If run like this, we will see the performance of EBR withou the semantic cache on the family datasets with
     all eviction strategies and cache sizes k * num_concepts where k \in [.2, .4, .8, 1.]"""
