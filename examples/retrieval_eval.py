@@ -140,13 +140,13 @@ def execute(args):
         properties=object_properties_and_inverse,
         cls=OWLObjectSomeValuesFrom,
     )
-    # (16) \forall r. C s.t. C \in NC* and r \in R* .
+    # (16) \forall r. C s.t. C \in NC* and r \in R*.
     for_all_nc_star = concept_reducer_properties(
         concepts=nc_star,
         properties=object_properties_and_inverse,
         cls=OWLObjectAllValuesFrom,
     )
-    # (17) >= n r. C  and =< n r. C, s.t. C \in NC* and r \in R* .
+    # (17) >= n r. C  and =< n r. C, s.t. C \in NC* and r \in R*.
     min_cardinality_nc_star_1, min_cardinality_nc_star_2, min_cardinality_nc_star_3 = (
         concept_reducer_properties(
             concepts=nc_star,
