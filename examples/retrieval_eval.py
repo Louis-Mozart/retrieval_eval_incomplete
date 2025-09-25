@@ -165,7 +165,7 @@ def execute(args):
         )
         for i in [1, 2, 3]
     )
-    # (18) \exist r. Nominal s.t. Nominal \in Nominals and r \in R* .
+    # (18) \exist r. Nominal s.t. Nominal \in Nominals and r \in R*.
     exist_nominals = concept_reducer_properties(
         concepts=nominal_combinations,
         properties=object_properties_and_inverse,
@@ -181,7 +181,7 @@ def execute(args):
 
     # () Collect the data.
     data = []
-    # () Converted to list so that the progress bar works.
+    # () Converted to a list so that the progress bar works.
     concepts = list(
         chain(
             nc,           # named concepts          (C)
@@ -213,7 +213,7 @@ def execute(args):
     print("#" * 50,end="\n\n")
 
 
-    # () Shuffled the data so that the progress bar is not influenced by the order of concepts.
+    # () Shuffled the data so that the order of concepts does not influence the progress bar.
 
     random.shuffle(concepts)
     # check if csv arleady exists and delete it cause we want to override it
