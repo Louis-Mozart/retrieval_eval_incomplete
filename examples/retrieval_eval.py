@@ -216,7 +216,7 @@ def execute(args):
     # () Shuffled the data so that the order of concepts does not influence the progress bar.
 
     random.shuffle(concepts)
-    # check if csv arleady exists and delete it cause we want to override it
+    # check if CSV already exists and delete it, cause we want to override it
     if os.path.exists(args.path_report):
         os.remove(args.path_report)
     file_exists = False
