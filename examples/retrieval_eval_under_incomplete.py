@@ -44,7 +44,7 @@ def generate_subgraphs(kb_path: str, directory: str, n: int, ratio: float, opera
         n (int): The number of subgraphs to generate.
         ratio (float): The ratio of elements to modify within the KB (as a percentage).
         operation (str): The type of operation to perform on the KB. Expected values are
-                        "incomplete" or "inconsistent", which define the type of subgraph to generate.
+                        "incomplete" or "inconsistent", which define the kind of subgraph to generate.
 
     Output:
     ---------------
