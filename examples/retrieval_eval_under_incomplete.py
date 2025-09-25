@@ -29,7 +29,7 @@ import pandas as pd
 import re
 from owlapy.static_funcs import stopJVM
 
-# Create incomplete/noisy KGs
+
 def generate_subgraphs(kb_path: str, directory: str, n: int, ratio: float, operation: str) -> Set[str]:
 
     """
