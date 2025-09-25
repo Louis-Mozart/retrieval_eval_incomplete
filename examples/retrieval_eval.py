@@ -123,7 +123,7 @@ def execute(args):
         nominals = set(random.sample(symbolic_kb.individuals(), args.num_nominals))
     else:
         nominals = symbolic_kb.individuals()
-    # (10) All combinations of 3 for Nominals, e.g. {martin, heinz, markus}
+    # (10) All combinations of 3 for Nominals, e.g., {martin, heinz, markus}
     nominal_combinations = set( OWLObjectOneOf(combination)for combination in itertools.combinations(nominals, 3))
 
     # (11) NC UNION NC.
@@ -134,7 +134,7 @@ def execute(args):
     unions_nc_star = concept_reducer(nc_star, opt=OWLObjectUnionOf)
     # (14) NC* INTERACTION NC*.
     intersections_nc_star = concept_reducer(nc_star, opt=OWLObjectIntersectionOf)
-    # (15) \exist r. C s.t. C \in NC* and r \in R* .
+    # (15) \exist r. C s.t. C \in NC* and r \in R*.
     exist_nc_star = concept_reducer_properties(
         concepts=nc_star,
         properties=object_properties_and_inverse,
