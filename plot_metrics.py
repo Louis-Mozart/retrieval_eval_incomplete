@@ -35,8 +35,8 @@ def plot_RT_vs_RT_cache(data, name_reasoner):
         subset = data[data["dataset"] == dataset_name]
         
         x = subset["cache_size"]
-        y1 = subset["RT_cache"]  # Runtime with cache
-        y2 = subset["RT"]        # Runtime without cache
+        y1 = subset["RT_cache"]   # Runtime with cache
+        y2 = subset["RT"]         # Runtime without cache
 
         # Create a new figure for each dataset
         plt.figure()
