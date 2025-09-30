@@ -55,10 +55,8 @@ def plot_scale_factor(data, name_reasoner):
     for dataset_name in datasets:
         # Filter data for the specific dataset
         subset = data[data["dataset"] == dataset_name]
-        
         # Calculate speedup factor
         speedup_factor = subset["RT"] / subset["RT_cache"]
-        
         # Plot speedup factor vs cache size for this dataset
         plt.plot(subset["cache_size"], speedup_factor, marker='o', label=dataset_name)
 
