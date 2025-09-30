@@ -4,13 +4,10 @@ import numpy as np
 
 
 def plot_jaccard_vs_cache_size(data, name_reasoner):
-
     datasets = data["dataset"].unique()
-
     # Plot each dataset's Cache Size vs Avg Jaccard
     for dataset_name in datasets:
         subset = data[data["dataset"] == dataset_name]
-        
         # Plot cache size vs avg jaccard for this dataset
         plt.plot(subset["cache_size"], subset["avg_jaccard"], marker='o', label=dataset_name)
 
