@@ -116,17 +116,13 @@ def bar_plot_all_data(data, cache_size, name_reasoner):
 
 
 def bar_plot_separate_data(data, cache_size, name_reasoner):
-
     grouped_df = data.groupby(['dataset', 'Type', 'cache_size']).agg({
         'time_ebr': 'mean',
         'time_cache': 'mean',
         'Jaccard': 'mean'
     }).reset_index()
-
     grouped_df = grouped_df[grouped_df["cache_size"]==cache_size]
-
     df = grouped_df
-
     datasets = df['dataset'].unique()
 
     # Plot for each dataset separately
