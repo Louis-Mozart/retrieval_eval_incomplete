@@ -22,36 +22,27 @@ def plot_jaccard_vs_cache_size(data, name_reasoner):
     plt.legend()
     plt.grid()
     plt.savefig(f'caching_results/jaccard_vs_cache_size_plot_{name_reasoner}.pdf', format='pdf')
-
     plt.show()
 
 def plot_RT_vs_RT_cache(data, name_reasoner):
-
     datasets = data["dataset"].unique()
-
     for dataset_name in datasets:
-
         # Filter data for the specific dataset
         subset = data[data["dataset"] == dataset_name]
-        
         x = subset["cache_size"]
         y1 = subset["RT_cache"]   # Runtime with cache
         y2 = subset["RT"]         # Runtime without cache
-
         # Create a new figure for each dataset
         plt.figure()
-        
         # Plot the data
         plt.plot(x, y1, '-b', label='Runtime with Cache')
         plt.plot(x, y2, '-r', label='Runtime without Cache')
         plt.legend()
-        
         # Label the axes and title
         plt.xlabel('Cache Size')
         plt.ylabel('Runtime(s)')
         plt.grid()
         plt.savefig(f'caching_results/runtime_plot_{name_reasoner}.pdf', format='pdf')
-
         # Show the plot
         plt.show()
 
