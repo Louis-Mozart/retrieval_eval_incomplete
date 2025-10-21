@@ -122,7 +122,7 @@ print(owl_expression_to_sparql(expression=h))
 save_owl_class_expressions(expressions=h,path="#owl_prediction")
 ```
 
-Fore more, please refer to the [examples](https://github.com/dice-group/Ontolearn/tree/develop/examples) folder.
+For more, please refer to the [examples](https://github.com/dice-group/Ontolearn/tree/develop/examples) folder.
 
 ## ontolearn-webservice 
 
