@@ -17,7 +17,7 @@ $E^+$ and $E^-$, learning [OWL Class expression](https://www.w3.org/TR/owl2-synt
 
 $$\forall p \in E^+\ \mathcal{K} \models H(p) \wedge \forall n \in E^-\ \mathcal{K} \not \models H(n).$$
 
-To tackle this supervised learning problem, ontolearn offers many symbolic, neuro-symbolic, and deep learning based Learning algorithms: 
+To tackle this supervised learning problem, OntoLearn offers many symbolic, neuro-symbolic, and deep learning based Learning algorithms: 
 - **TDL** &rarr; Tree-based OWL Class Expression Learner for Large Graphs
 - **Drill** &rarr; [Neuro-Symbolic Class Expression Learning](https://www.ijcai.org/proceedings/2023/0403.pdf)
 - **EvoLearner** &rarr; [EvoLearner: Learning Description Logics with Evolutionary Algorithms](https://dl.acm.org/doi/abs/10.1145/3485447.3511925)
