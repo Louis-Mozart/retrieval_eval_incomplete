@@ -10,7 +10,7 @@
 
 # Ontolearn: Learning OWL Class Expressions
 
-*Ontolearn* is an open-source software library for learning OWL class expressions at large scale.
+*Ontolearn* is an open-source software library for learning OWL class expressions at a large scale.
 
 Given positive and negative [OWL named individual](https://www.w3.org/TR/owl2-syntax/#Individuals) examples
 $E^+$ and $E^-$, learning [OWL Class expression](https://www.w3.org/TR/owl2-syntax/#Class_Expressions) problem refers to the following supervised Machine Learning problem
