@@ -153,7 +153,7 @@ for str_target_concept, examples in learning_problems.items():
                                   "model": "Drill",
                                   "path_embeddings": "mutagenesis_embeddings/Keci_entity_embeddings.csv",
                                   "path_to_pretrained_drill": "pretrained_drill",
-                                  # if pretrained_drill exists, upload, otherwise train one and save it there
+                                  # if pretrained_drill exists, upload; otherwise train one and save it there
                                   "num_of_training_learning_problems": 2,
                                   "num_of_target_concepts": 3,
                                   "max_runtime": 60000,  # seconds
