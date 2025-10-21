@@ -136,7 +136,7 @@ or launch a Tentris instance https://github.com/dice-group/tentris over Mutagene
 ```shell
 ontolearn-webservice --endpoint_triple_store http://0.0.0.0:9080/sparql
 ```
-The below code trains DRILL with 6 randomly generated learning problems,
+The code below trains DRILL with 6 randomly generated learning problems,
 provided that **path_to_pretrained_drill** does not lead to a directory containing pretrained DRILL.
 Thereafter, trained DRILL is saved in the directory **path_to_pretrained_drill**.
 Finally, trained DRILL will learn an OWL class expression.
