@@ -153,7 +153,7 @@ for str_target_concept, examples in learning_problems.items():
                                   "model": "Drill",
                                   "path_embeddings": "mutagenesis_embeddings/Keci_entity_embeddings.csv",
                                   "path_to_pretrained_drill": "pretrained_drill",
-                                  # if pretrained_drill exists, upload; otherwise train one and save it there
+                                  # if pretrained_drill exists, upload; otherwise, train one and save it there
                                   "num_of_training_learning_problems": 2,
                                   "num_of_target_concepts": 3,
                                   "max_runtime": 60000,  # seconds
@@ -178,7 +178,7 @@ import json
 import requests
 with open(f"LPs/Mutagenesis/lps.json") as json_file:
     learning_problems = json.load(json_file)["problems"]
-## This trains NCES before solving the provided learning problems. Expect poor performance for this number of epochs, and this training data size.
+## This trains NCES before solving the provided learning problems. Expect poor performance for this number of epochs and this training data size.
 ## If GPU is available, set `num_of_training_learning_problems` t0 10_000 or more. Set `nces_train_epochs` to 300 or more, and increase `nces_batch_size`.
 for str_target_concept, examples in learning_problems.items():
     response = requests.get('http://0.0.0.0:8000/cel',
@@ -188,7 +188,7 @@ for str_target_concept, examples in learning_problems.items():
                                   "model": "NCES",
                                   "path_embeddings": "mutagenesis_embeddings/Keci_entity_embeddings.csv",
                                   "path_to_pretrained_nces": None,
-                                  # if pretrained_nces exists, load weghts, otherwise train one and save it
+                                  # if pretrained_nces exists, load weights, otherwise train one and save it
                                   "num_of_training_learning_problems": 100,
                                   "nces_train_epochs": 5,
                                   "nces_batch_size": 16
