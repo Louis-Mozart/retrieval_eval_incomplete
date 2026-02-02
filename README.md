@@ -247,7 +247,7 @@ import pandas as pd
 df=pd.read_csv("family_results.csv").groupby("LP").mean()
 print(df[[col for col in df if col.startswith('Test-F1') or col.startswith('RT')]].to_markdown(floatfmt=".3f"))
 ```
-**Note that DRILL is untrained and we simply used accuracy driven heuristics to learn an OWL class expression.**
+**Note that DRILL is untrained and we simply used accuracy-driven heuristics to learn an OWL class expression.**
 
 Below, we report the average test F1 score and the average runtimes of learners.
 
